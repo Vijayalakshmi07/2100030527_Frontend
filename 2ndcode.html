@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Data Table</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(27, 31, 35, 0.12), 0 8px 24px rgba(27, 31, 35, 0.12);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #58a6ff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #30363d;
+        }
+
+        th {
+            cursor: pointer;
+        }
+
+        th.sortable:after {
+            content: ' \25B2'; /* Unicode for up arrow */
+        }
+
+        th.sortable.sorted-asc:after {
+            content: ' \25B2'; /* Unicode for up arrow */
+        }
+
+        th.sortable.sorted-desc:after {
+            content: ' \25BC'; /* Unicode for down arrow */
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            background: #0d1117;
+            color: #c9d1d9;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .pagination button {
+            background-color: #238636;
+            color: #ffffff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+
+        .pagination button.disabled {
+            background-color: #30363d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Data Table</h1>
+        <input type="text" id="filter-input" placeholder="Filter...">
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <th class="sortable">Name</th>
+                    <th class="sortable">Age</th>
+                    <th class="sortable">City</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be populated by JavaScript -->
+            </tbody>
+        </table>
+        <div class="pagination">
+            <button id="prev-page">Previous</button>
+            <span id="page-info"></span>
+            <button id="next-page">Next</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableData = generateRandomData(100);
+            const rowsPerPage = 10;
+            let currentPage = 1;
+            let filteredData = [...tableData];
+            let sortDirection = 'asc';
+            let currentSortColumn = '';
+
+            const tableBody = document.querySelector('#data-table tbody');
+            const filterInput = document.getElementById('filter-input');
+            const prevPageButton = document.getElementById('prev-page');
+            const nextPageButton = document.getElementById('next-page');
+            const pageInfo = document.getElementById('page-info');
+            const sortableHeaders = document.querySelectorAll('.sortable');
+
+            sortableHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    const column = header.textContent.toLowerCase();
+                    if (currentSortColumn === column) {
+                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        currentSortColumn = column;
+                        sortDirection = 'asc';
+                    }
+                    sortData(column, sortDirection);
+                    renderTable();
+                    updatePagination();
+                });
+            });
+
+            filterInput.addEventListener('input', (e) => {
+                const filterValue = e.target.value.toLowerCase();
+                filteredData = tableData.filter(row => {
+                    return Object.values(row).some(value => 
+                        String(value).toLowerCase().includes(filterValue)
+                    );
+                });
+                currentPage = 1;
+                renderTable();
+                updatePagination();
+            });
+
+            prevPageButton.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable();
+                    updatePagination();
+                }
+            });
+
+            nextPageButton.addEventListener('click', () => {
+                if (currentPage * rowsPerPage < filteredData.length) {
+                    currentPage++;
+                    renderTable();
+                    updatePagination();
+                }
+            });
+
+            function generateRandomData(count) {
+                const names = ["Alice", "Bob", "Charlie", "David", "Eva"];
+                const cities = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"];
+                return Array.from({ length: count }, () => ({
+                    name: names[Math.floor(Math.random() * names.length)],
+                    age: Math.floor(Math.random() * 60) + 20,
+                    city: cities[Math.floor(Math.random() * cities.length)],
+                }));
+            }
+
+            function sortData(column, direction) {
+                const sortColumn = column.toLowerCase();
+                filteredData.sort((a, b) => {
+                    if (a[sortColumn] < b[sortColumn]) {
+                        return direction === 'asc' ? -1 : 1;
+                    }
+                    if (a[sortColumn] > b[sortColumn]) {
+                        return direction === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                });
+            }
+
+            function renderTable() {
+                tableBody.innerHTML = '';
+                const start = (currentPage - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+                const pageData = filteredData.slice(start, end);
+
+                pageData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${row.name}</td><td>${row.age}</td><td>${row.city}</td>`;
+                    tableBody.appendChild(tr);
+                });
+
+                sortableHeaders.forEach(header => {
+                    header.classList.remove('sorted-asc', 'sorted-desc');
+                    if (header.textContent.toLowerCase() === currentSortColumn) {
+                        header.classList.add(`sorted-${sortDirection}`);
+                    }
+                });
+            }
+
+            function updatePagination() {
+                pageInfo.textContent = `Page ${currentPage} of ${Math.ceil(filteredData.length / rowsPerPage)}`;
+                prevPageButton.classList.toggle('disabled', currentPage === 1);
+                nextPageButton.classList.toggle('disabled', currentPage * rowsPerPage >= filteredData.length);
+            }
+
+            renderTable();
+            updatePagination();
+        });
+    </script>
+</body>
+</html>
